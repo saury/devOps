@@ -1,0 +1,90 @@
+pipeline {
+    agent any
+    environment {
+        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
+        MAIL_TO = "jin.xu@ef.com"
+        MAIL_TITLE = "Template tb release"
+        MESSAGE_SUCCESS = "TB engine build <${BUILD_URL}|#${BUILD_NUMBER}> has passed!😚"
+        MESSAGE_FAIL = "TB engine build <${BUILD_URL}|#${BUILD_NUMBER}> has failed! ⛈ \n Log:"
+    }
+    triggers {
+        pollSCM 'H 0 1 1 0'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checkout'
+                checkout([$class: 'GitSCM', branches: [[name: 'develop']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '891230bd-a5e2-45f8-8b3d-2688deeee748', url: 'ssh://git@bitbucket.englishtown.cn:7999/etg/responsive-activity-renderer.git']]])
+                // checkout scm
+            }
+        }
+        stage('Install') {
+            steps {
+                echo 'Installing'
+                sh '''
+                    yarn
+                    bower install
+                '''
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing'
+                sh '''
+                    yarn lint
+                    yarn test-tbhw
+                '''
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Building'
+                sh '''
+                    yarn release-tbhw
+                    find . -maxdepth 1 \\! \\( -name ".git" -o -name "build" -o -name "*gitignore" -o -name "node_modules" -o -name "bower_modules" \\) -exec rm -rf \'{}\' \\;
+                    mv .gitignore build/tbhw
+                    git checkout -f origin/release/tbhw_qa
+                    # save old iOS version
+                    version=$(jq '.version' config.json)
+                    mv build/tbhw/.gitignore .
+                    find . -maxdepth 1 \\! \\( -name ".git" -o -name "build" -o -name "*gitignore" -o -name "node_modules" -o -name "bower_modules" \\) -exec rm -rf \'{}\' \\;
+                    mv build/tbhw/* .
+                    rm -rf build
+                    # bump iOS version
+                    jq --arg v $version '.version = ($v|tonumber + 1)' config.json | sponge config.json
+                '''
+            }
+        }
+        stage('Release') {
+            steps {
+                echo 'Releasing'
+                sh '''
+                    git add .
+                    git config user.email \'jin.xu@ef.com\'
+                    git config user.name \'Jenkins\'
+                    git commit -m \'auto release\'
+                    git push origin HEAD:release/tbhw_qa -f
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Clean up'
+            deleteDir()
+        }
+        success {
+            echo 'Succeeed!'
+            // build 'tbhw_deploy_engine_qa'
+            emailext body: MESSAGE_SUCCESS, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        unstable {
+            echo 'Unstable :/'
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        failure {
+            echo 'Failed :('
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+    }
+}
