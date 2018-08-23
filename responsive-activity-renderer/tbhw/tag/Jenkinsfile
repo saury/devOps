@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+    environment {
+        GIT_CREDENTIAL = "891230bd-a5e2-45f8-8b3d-2688deeee748" 
+        GIT_BRANCH = "develop" 
+        GIT_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/responsive-activity-renderer.git"
+        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
+        MAIL_TO = "jin.xu@ef.com"
+        MAIL_TITLE = "TB engine regular release info tagging"
+        MESSAGE_SUCCESS = "TB engine regular release info tagged!😚"
+        MESSAGE_FAIL = "TB engine regular release info tagged failed! ⛈ \n Log:"
+    }
+    triggers {
+        cron '50 23 * * 2'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checkout'
+                // checkout scm
+                checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+            }
+        }
+        stage('Tag') {
+            steps {
+                echo 'Tagging'
+                sh '''
+                    (if [ `expr $BUILD_NUMBER % 2` -eq 0 ]; then
+                        TIME_STAMP=$(date +%Y-%m-%d)
+                        # create branch with timestamp
+                        git checkout -b release/date_$TIME_STAMP
+                        git push origin HEAD:release/tbhw_$TIME_STAMP -f
+                    else
+                        echo "There is no release plan for this week"
+                    fi)
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Clean up'
+            deleteDir()
+        }
+        success {
+            echo 'Succeeed!'
+            emailext attachLog: true, body: MESSAGE_SUCCESS, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        unstable {
+            echo 'Unstable :/'
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        failure {
+            echo 'Failed :('
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+    }
+}
