@@ -1,0 +1,90 @@
+pipeline {
+    agent any
+    environment {
+        GIT_CREDENTIAL = "891230bd-a5e2-45f8-8b3d-2688deeee748" 
+        GIT_BRANCH = "release/tbhw_qa" 
+        GIT_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/responsive-activity-renderer.git"
+        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
+        MAIL_TO = "gary.shi@ef.com,elsa.xutj@ef.com,jin.xu@ef.com"
+        MAIL_TITLE = "TB engine bundle release"
+        MESSAGE_SUCCESS = "TB engine bundle released!😚"
+        MESSAGE_FAIL = "TB engine bundle release failed! ⛈ \n Log:"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checkout'
+                // checkout scm
+                checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+            }
+        }
+        stage('Collect') {
+            steps {
+                sh '''
+                    # cp required files to folder
+                    rm -rf syncFolder
+                    mkdir syncFolder
+                    cp -r fonts syncFolder
+                    cp -r images syncFolder
+                    cp -r script syncFolder
+                    cp index.html syncFolder
+                    cp config.json syncFolder
+                '''
+            }
+        }
+        stage('Deploy (QA)') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'qa'
+            }
+            steps {
+                sh '''
+                    aws s3 sync syncFolder s3://trailblazers3-qa.ef.com/engine --profile cn_qa --region cn-north-1
+                '''
+            }
+        }
+        stage('Deploy (Staging)') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'stage'
+            }
+            steps {
+                sh '''
+                    # cn
+                    aws s3 sync syncFolder s3://trailblazers3-staging.ef.cn/engine --profile cn_staging --region cn-north-1
+                    # us
+                    aws s3 sync syncFolder s3://trailblazers3-staging.ef.com/engine --profile us_staging --region ap-southeast-1
+                '''
+            }
+        }
+        stage('Deploy (Live)') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'live'
+            }
+            steps {
+                sh '''
+                    # cn
+                    aws s3 sync syncFolder s3://trailblazers3.ef.cn/engine --profile cn_live --region cn-north-1
+                    # us
+                    aws s3 sync syncFolder s3://trailblazers3.ef.com/engine --profile us_live --region ap-southeast-1
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Clean up'
+            deleteDir()
+        }
+        success {
+            echo 'Succeeed!'
+            emailext body: MESSAGE_SUCCESS, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        unstable {
+            echo 'Unstable :/'
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        failure {
+            echo 'Failed :('
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+    }
+}

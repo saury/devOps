@@ -8,6 +8,7 @@ graph TD;
     end
     subgraph release
         RB[new bundle]
+        C-.At the end of the release day.->DRegular["🆕 Create TimeStamped <br> TAG OR BNAME"]
     end
     end
     subgraph jenkins

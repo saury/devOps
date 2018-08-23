@@ -1,6 +1,8 @@
 pipeline {
     agent any
     environment {
+        GIT_BRANCH = "release/tbhw_qa" 
+        GIT_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/responsive-activity-renderer.git"
         PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
         MAIL_TO = "jin.xu@ef.com"
         MAIL_TITLE = "Template tb release"
@@ -14,8 +16,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checkout'
-                checkout([$class: 'GitSCM', branches: [[name: 'develop']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '891230bd-a5e2-45f8-8b3d-2688deeee748', url: 'ssh://git@bitbucket.englishtown.cn:7999/etg/responsive-activity-renderer.git']]])
                 // checkout scm
+                checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '891230bd-a5e2-45f8-8b3d-2688deeee748', url: GIT_URL]]])
             }
         }
         stage('Install') {
