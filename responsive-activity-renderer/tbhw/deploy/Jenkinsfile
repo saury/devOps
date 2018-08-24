@@ -6,9 +6,9 @@ pipeline {
         GIT_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/responsive-activity-renderer.git"
         PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
         MAIL_TO = "gary.shi@ef.com,elsa.xutj@ef.com,jin.xu@ef.com"
-        MAIL_TITLE = "TB engine bundle release"
-        MESSAGE_SUCCESS = "TB engine bundle released!😚"
-        MESSAGE_FAIL = "TB engine bundle release failed! ⛈ \n Log:"
+        MAIL_TITLE = "TB engine bundle for $DEPLOY_ENV release"
+        MESSAGE_SUCCESS = "TB engine bundle for $DEPLOY_ENV released!😚"
+        MESSAGE_FAIL = "TB engine bundle for $DEPLOY_ENV release failed! ⛈ \n Log:"
     }
     stages {
         stage('Checkout') {
@@ -44,7 +44,7 @@ pipeline {
         }
         stage('Deploy (Staging)') {
             when {
-                environment name: 'DEPLOY_ENV', value: 'stage'
+                environment name: 'DEPLOY_ENV', value: 'staging'
             }
             steps {
                 sh '''

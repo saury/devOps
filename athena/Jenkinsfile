@@ -1,0 +1,532 @@
+pipeline {
+    agent any
+    environment {
+        GIT_CREDENTIAL = "891230bd-a5e2-45f8-8b3d-2688deeee748" 
+        GIT_BRANCH = "develop" 
+        GIT_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/responsive-activity-renderer.git"
+        GIT_BRANCH_IWB = "feature/iwb-client-dev" 
+        GIT_URL_IWB = "ssh://git@bitbucket.englishtown.cn:7999/ebrew/iwb-client.git"
+        GIT_URL_DEPLOY = "ssh://git@bitbucket.englishtown.cn:7999/etg/deployment-athena-fe.git"
+        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
+        MAIL_TO = "jin.xu@ef.com"
+        // MAIL_TO = "gary.shi@ef.com,ext.july.long@ef.com,jin.xu@ef.com"
+        MAIL_TITLE = "Athena $DEPLOY_ENV"
+        MESSAGE_SUCCESS = "Athena $DEPLOY_ENV release successfully!😚"
+        MESSAGE_FAIL = "Athena $DEPLOY_ENV release failed! ⛈ \n Log:"
+    }
+    stages {
+        stage('IWB-Client(Staging)(CN)') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'staging'
+            }
+            parallel {
+                stage('Checkout') {
+                    steps{
+                        dir('iwb-client-cn') {
+                            checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH_IWB]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_IWB]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps{
+                        dir('iwb-client-cn') {
+                            sh '''
+                                yarn
+                                rm -rf tingyun*.js
+                                cp -rf env/stage/ .
+                                yarn build
+                                rm -rf dist/env
+                                rm dist/publish.js
+                                node publish.js
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('IWB-Client(Staging)(SG)') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'staging'
+            }
+            parallel {
+                stage('Checkout') {
+                    steps{
+                        dir('iwb-client-sg') {
+                            checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH_IWB]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_IWB]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps{
+                        dir('iwb-client-sg') {
+                            sh '''
+                                yarn
+                                rm -rf tingyun*.js
+                                cp -rf env/stage_sg/ .
+                                yarn build
+                                rm -rf dist/env
+                                rm dist/publish.js
+                                node publish.js
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('IWB-Client(Live)(CN)') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'live'
+            }
+            parallel {
+                stage('Checkout') {
+                    steps{
+                        dir('iwb-client-cn') {
+                            checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH_IWB]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_IWB]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps{
+                        dir('iwb-client-cn') {
+                            sh '''
+                                yarn
+                                rm -rf tingyun*.js
+                                cp -rf env/live/ .
+                                yarn build
+                                rm -rf dist/env
+                                rm dist/publish.js
+                                node publish.js
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('IWB-Client(Live)(SG)') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'live'
+            }
+            parallel {
+                stage('Checkout') {
+                    steps{
+                        dir('iwb-client-sg') {
+                            checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH_IWB]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_IWB]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps{
+                        dir('iwb-client-sg') {
+                            sh '''
+                                yarn
+                                rm -rf tingyun*.js
+                                cp -rf env/live_sg/ .
+                                yarn build
+                                rm -rf dist/env
+                                rm dist/publish.js
+                                node publish.js
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('SSIWB') {
+            parallel {
+                stage('Checkout') {
+                    steps{
+                        dir('ssiwb') {
+                            checkout([$class: 'GitSCM', branches: [[name: GIT_BRANCH]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps{
+                        dir('ssiwb') {
+                            sh '''
+                                yarn
+                                bower install
+                                yarn lint
+                                yarn test-ssiwb
+                                yarn release-ssiwb
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy(Staging)(CN)'){
+            when {
+                environment name: 'DEPLOY_ENV', value: 'staging'
+            }
+            parallel{
+                stage('Checkout') {
+                    steps{
+                        dir('athena-deploy-cn') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'STAGING_CN']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_DEPLOY]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps {
+                        dir('athena-deploy-cn') {
+                            sh '''
+                                # clear
+                                rm -rf ssiwb
+                                rm -rf athena.zip
+                                rm -rf bower_components
+                                rm -rf index.html
+                                rm -rf main*.js
+                                # copy iwb-client dist
+                                cp -rf ../iwb-client-cn/dist/ .
+                                # copy ssiwb dist
+                                cp -rf ../ssiwb/build/ssiwb .
+                                # add version number
+                                result=$(jq '.version|tonumber + 1' version.json)
+                                jq --arg result $result '.version = $result' version.json | sponge version.json
+                                # change config for zip
+                                jq '.offLine = null' config.json |sponge config.json
+                                
+                                ZIP_FILE_NAME="athena.zip"
+                                # Generate zip and test it
+                                mkdir expectFolder
+                                # copy all files to expected folder
+                                cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
+                                # compress all files
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                # test unzip
+                                unzip -t $ZIP_FILE_NAME
+                                # unzip files to result folder
+                                unzip $ZIP_FILE_NAME -d resultFolder
+                                # diff expect folder and result folder
+                                diff -r expectFolder/ resultFolder/ > diff.log
+                                (if [ -s diff.log ]; then
+                                echo "Please verify zip file content"
+                                exit 1
+                                else
+                                echo "Verify passed without diff"
+                                fi)
+                                # clear test folders
+                                rm -rf diff.log expectFolder resultFolder
+
+                                # change config for common
+                                jq '.offLine = false' config.json |sponge config.json
+                                git add .
+                                git commit -m 'automatically pushed by jenkins'
+                            '''
+                        }
+                    }
+                }
+                stage('Release') {
+                    steps {
+                        dir('athena-deploy-cn'){
+                            sh '''
+                                git add .
+                                git config user.email \'jin.xu@ef.com\'
+                                git config user.name \'Jenkins\'
+                                git commit -m \'auto release\'
+                                git push origin HEAD:STAGING_CN -f
+                            '''
+                        }
+                    }
+                }
+                stage('Deploy') {
+                    steps {
+                        dir('athena-deploy-cn'){
+                            sh '''
+                                # push to s3 bucket
+                                aws s3 sync . s3://e1athena-staging.ef.cn --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        stage('Deploy(Staging)(SG)'){
+            when {
+                environment name: 'DEPLOY_ENV', value: 'staging'
+            }
+            parallel{
+                stage('Checkout') {
+                    steps{
+                        dir('athena-deploy-sg') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'STAGING_US']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_DEPLOY]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps {
+                        dir('athena-deploy-sg') {
+                            sh '''
+                                # clear
+                                rm -rf ssiwb
+                                rm -rf athena.zip
+                                rm -rf bower_components
+                                rm -rf index.html
+                                rm -rf main*.js
+                                # copy iwb-client dist
+                                cp -rf ../iwb-client-sg/dist/ .
+                                # copy ssiwb dist
+                                cp -rf ../ssiwb/build/ssiwb .
+                                # add version number
+                                result=$(jq '.version|tonumber + 1' version.json)
+                                jq --arg result $result '.version = $result' version.json | sponge version.json
+                                # change config for zip
+                                jq '.offLine = null' config.json |sponge config.json
+
+                                ZIP_FILE_NAME="athena.zip"
+                                # Generate zip and test it
+                                mkdir expectFolder
+                                # copy all files to expected folder
+                                cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
+                                # compress all files
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                # test unzip
+                                unzip -t $ZIP_FILE_NAME
+                                # unzip files to result folder
+                                unzip $ZIP_FILE_NAME -d resultFolder
+                                # diff expect folder and result folder
+                                diff -r expectFolder/ resultFolder/ > diff.log
+                                (if [ -s diff.log ]; then
+                                echo "Please verify zip file content"
+                                exit 1
+                                else
+                                echo "Verify passed without diff"
+                                fi)
+                                # clear test folders
+                                rm -rf diff.log expectFolder resultFolder
+
+                                # change config for common
+                                jq '.offLine = false' config.json |sponge config.json
+                                git add .
+                                git commit -m 'automatically pushed by jenkins'
+                            '''
+                        }
+                    }
+                }
+                stage('Release') {
+                    steps {
+                        dir('athena-deploy-sg'){
+                            sh '''
+                                git add .
+                                git config user.email \'jin.xu@ef.com\'
+                                git config user.name \'Jenkins\'
+                                git commit -m \'auto release\'
+                                git push origin HEAD:STAGING_US -f
+                            '''
+                        }
+                    }
+                }
+                stage('Deploy') {
+                    steps {
+                        dir('athena-deploy-sg'){
+                            sh '''
+                                # push to s3 bucket
+                                aws s3 sync . s3://e1athena-staging.ef.com --profile us_staging --region ap-southeast-1 --exclude '.git/**/*'
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        
+        
+        stage('Deploy(Live)(CN)'){
+            when {
+                environment name: 'DEPLOY_ENV', value: 'live'
+            }
+            parallel{
+                stage('Checkout') {
+                    steps{
+                        dir('athena-deploy-cn') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'LIVE_CN']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_DEPLOY]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps {
+                        dir('athena-deploy-cn') {
+                            sh '''
+                                # clear
+                                rm -rf ssiwb
+                                rm -rf athena.zip
+                                rm -rf bower_components
+                                rm -rf index.html
+                                rm -rf main*.js
+                                # copy iwb-client dist
+                                cp -rf ../iwb-client-cn/dist/ .
+                                # copy ssiwb dist
+                                cp -rf ../ssiwb/build/ssiwb .
+                                # add version number
+                                result=$(jq '.version|tonumber + 1' version.json)
+                                jq --arg result $result '.version = $result' version.json | sponge version.json
+                                # change config for zip
+                                jq '.offLine = null' config.json |sponge config.json
+                                
+                                ZIP_FILE_NAME="athena.zip"
+                                # Generate zip and test it
+                                mkdir expectFolder
+                                # copy all files to expected folder
+                                cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
+                                # compress all files
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                # test unzip
+                                unzip -t $ZIP_FILE_NAME
+                                # unzip files to result folder
+                                unzip $ZIP_FILE_NAME -d resultFolder
+                                # diff expect folder and result folder
+                                diff -r expectFolder/ resultFolder/ > diff.log
+                                (if [ -s diff.log ]; then
+                                echo "Please verify zip file content"
+                                exit 1
+                                else
+                                echo "Verify passed without diff"
+                                fi)
+                                # clear test folders
+                                rm -rf diff.log expectFolder resultFolder
+
+                                # change config for common
+                                jq '.offLine = false' config.json |sponge config.json
+                                git add .
+                                git commit -m 'automatically pushed by jenkins'
+                            '''
+                        }
+                    }
+                }
+                stage('Release') {
+                    steps {
+                        dir('athena-deploy-cn'){
+                            sh '''
+                                git add .
+                                git config user.email \'jin.xu@ef.com\'
+                                git config user.name \'Jenkins\'
+                                git commit -m \'auto release\'
+                                git push origin HEAD:LIVE_CN -f
+                            '''
+                        }
+                    }
+                }
+                stage('Deploy') {
+                    steps {
+                        dir('athena-deploy-cn'){
+                            sh '''
+                                # push to s3 bucket
+                                aws s3 sync . s3://e1athena.ef.cn --profile cn_live --region cn-north-1 --exclude '.git/**/*'
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        stage('Deploy(Live)(SG)'){
+            when {
+                environment name: 'DEPLOY_ENV', value: 'live'
+            }
+            parallel{
+                stage('Checkout') {
+                    steps{
+                        dir('athena-deploy-sg') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'LIVE_US_2']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL_DEPLOY]]])
+                        }
+                    }
+                }
+                stage('Build') {
+                    steps {
+                        dir('athena-deploy-sg') {
+                            sh '''
+                                # clear
+                                rm -rf ssiwb
+                                rm -rf athena.zip
+                                rm -rf bower_components
+                                rm -rf index.html
+                                rm -rf main*.js
+                                # copy iwb-client dist
+                                cp -rf ../iwb-client-sg/dist/ .
+                                # copy ssiwb dist
+                                cp -rf ../ssiwb/build/ssiwb .
+                                # add version number
+                                result=$(jq '.version|tonumber + 1' version.json)
+                                jq --arg result $result '.version = $result' version.json | sponge version.json
+                                # change config for zip
+                                jq '.offLine = null' config.json |sponge config.json
+
+                                ZIP_FILE_NAME="athena.zip"
+                                # Generate zip and test it
+                                mkdir expectFolder
+                                # copy all files to expected folder
+                                cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
+                                # compress all files
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                # test unzip
+                                unzip -t $ZIP_FILE_NAME
+                                # unzip files to result folder
+                                unzip $ZIP_FILE_NAME -d resultFolder
+                                # diff expect folder and result folder
+                                diff -r expectFolder/ resultFolder/ > diff.log
+                                (if [ -s diff.log ]; then
+                                echo "Please verify zip file content"
+                                exit 1
+                                else
+                                echo "Verify passed without diff"
+                                fi)
+                                # clear test folders
+                                rm -rf diff.log expectFolder resultFolder
+
+                                # change config for common
+                                jq '.offLine = false' config.json |sponge config.json
+                                git add .
+                                git commit -m 'automatically pushed by jenkins'
+                            '''
+                        }
+                    }
+                }
+                stage('Release') {
+                    steps {
+                        dir('athena-deploy-sg'){
+                            sh '''
+                                git add .
+                                git config user.email \'jin.xu@ef.com\'
+                                git config user.name \'Jenkins\'
+                                git commit -m \'auto release\'
+                                git push origin HEAD:LIVE_US_2 -f
+                            '''
+                        }
+                    }
+                }
+                stage('Deploy') {
+                    steps {
+                        dir('athena-deploy-sg'){
+                            sh '''
+                                # push to s3 bucket
+                                aws s3 sync . s3://e1athena2.ef.com --profile us_live --region ap-southeast-1 --exclude '.git/**/*'
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Clean up'
+            deleteDir()
+        }
+        success {
+            echo 'Succeeed!'
+            emailext attachLog: true, body: MESSAGE_SUCCESS, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        unstable {
+            echo 'Unstable :/'
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        failure {
+            echo 'Failed :('
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: MAIL_TO
+        }
+    }
+}
