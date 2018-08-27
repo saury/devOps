@@ -198,7 +198,7 @@ pipeline {
                                 # copy all files to expected folder
                                 cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
                                 # compress all files
-                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\* .gitignore
                                 # test unzip
                                 unzip -t $ZIP_FILE_NAME
                                 # unzip files to result folder
@@ -285,7 +285,7 @@ pipeline {
                                 # copy all files to expected folder
                                 cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
                                 # compress all files
-                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\* .gitignore
                                 # test unzip
                                 unzip -t $ZIP_FILE_NAME
                                 # unzip files to result folder
@@ -374,7 +374,7 @@ pipeline {
                                 # copy all files to expected folder
                                 cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
                                 # compress all files
-                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\* .gitignore
                                 # test unzip
                                 unzip -t $ZIP_FILE_NAME
                                 # unzip files to result folder
@@ -461,7 +461,7 @@ pipeline {
                                 # copy all files to expected folder
                                 cp -r `ls -A | grep -v ".git\|expectFolder"` expectFolder
                                 # compress all files
-                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\*
+                                zip -r $ZIP_FILE_NAME . -x .git/\* expectFolder/\* .gitignore
                                 # test unzip
                                 unzip -t $ZIP_FILE_NAME
                                 # unzip files to result folder
