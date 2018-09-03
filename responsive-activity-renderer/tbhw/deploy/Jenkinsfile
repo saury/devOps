@@ -39,6 +39,13 @@ pipeline {
             steps {
                 sh '''
                     aws s3 sync syncFolder s3://trailblazers3-qa.ef.com/engine --profile cn_qa --region cn-north-1
+                    # add metadata for cache control
+                    aws s3 cp s3://trailblazers3-qa.ef.com/engine/ s3://trailblazers3-qa.ef.com/engine/ \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=86400
+                    aws s3 cp s3://trailblazers3-qa.ef.com/engine/ s3://trailblazers3-qa.ef.com/engine/ --exclude "*" --include "*.html" --include "*.json" \
+                    --recursive --metadata-directive REPLACE --cache-control no-cache
+                    aws s3 cp s3://trailblazers3-qa.ef.com/engine/ s3://trailblazers3-qa.ef.com/engine/ --exclude "*" --include "*.css" --include "*.js" \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=31536000
                 '''
             }
         }
@@ -50,8 +57,22 @@ pipeline {
                 sh '''
                     # cn
                     aws s3 sync syncFolder s3://trailblazers3-staging.ef.cn/engine --profile cn_staging --region cn-north-1
+                    # add metadata for cache control
+                    aws s3 cp s3://trailblazers3-staging.ef.cn/engine/ s3://trailblazers3-staging.ef.cn/engine/ \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=86400
+                    aws s3 cp s3://trailblazers3-staging.ef.cn/engine/ s3://trailblazers3-staging.ef.cn/engine/ --exclude "*" --include "*.html" --include "*.json" \
+                    --recursive --metadata-directive REPLACE --cache-control no-cache
+                    aws s3 cp s3://trailblazers3-staging.ef.cn/engine/ s3://trailblazers3-staging.ef.cn/engine/ --exclude "*" --include "*.css" --include "*.js" \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=31536000
                     # us
                     aws s3 sync syncFolder s3://trailblazers3-staging.ef.com/engine --profile us_staging --region ap-southeast-1
+                    # add metadata for cache control
+                    aws s3 cp s3://trailblazers3-staging.ef.com/engine/ s3://trailblazers3-staging.ef.com/engine/ \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=86400
+                    aws s3 cp s3://trailblazers3-staging.ef.com/engine/ s3://trailblazers3-staging.ef.com/engine/ --exclude "*" --include "*.html" --include "*.json" \
+                    --recursive --metadata-directive REPLACE --cache-control no-cache
+                    aws s3 cp s3://trailblazers3-staging.ef.com/engine/ s3://trailblazers3-staging.ef.com/engine/ --exclude "*" --include "*.css" --include "*.js" \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=31536000
                 '''
             }
         }
@@ -63,8 +84,22 @@ pipeline {
                 sh '''
                     # cn
                     aws s3 sync syncFolder s3://trailblazers3.ef.cn/engine --profile cn_live --region cn-north-1
+                    # add metadata for cache control
+                    aws s3 cp s3://trailblazers3.ef.cn/engine/ s3://trailblazers3.ef.cn/engine/ \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=86400
+                    aws s3 cp s3://trailblazers3.ef.cn/engine/ s3://trailblazers3.ef.cn/engine/ --exclude "*" --include "*.html" --include "*.json" \
+                    --recursive --metadata-directive REPLACE --cache-control no-cache
+                    aws s3 cp s3://trailblazers3.ef.cn/engine/ s3://trailblazers3.ef.cn/engine/ --exclude "*" --include "*.css" --include "*.js" \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=31536000
                     # us
                     aws s3 sync syncFolder s3://trailblazers3.ef.com/engine --profile us_live --region ap-southeast-1
+                    # add metadata for cache control
+                    aws s3 cp s3://trailblazers3.ef.com/engine/ s3://trailblazers3.ef.com/engine/ \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=86400
+                    aws s3 cp s3://trailblazers3.ef.com/engine/ s3://trailblazers3.ef.com/engine/ --exclude "*" --include "*.html" --include "*.json" \
+                    --recursive --metadata-directive REPLACE --cache-control no-cache
+                    aws s3 cp s3://trailblazers3.ef.com/engine/ s3://trailblazers3.ef.com/engine/ --exclude "*" --include "*.css" --include "*.js" \
+                    --recursive --metadata-directive REPLACE --cache-control max-age=31536000
                 '''
             }
         }
