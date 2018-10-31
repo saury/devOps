@@ -15,24 +15,27 @@ So, all the pipline script should refer to these steps.
 ```mermaid
 graph TD;
     Title(("📓 Repositories"))
-    Title-->H["🚑 Fix"]
 		Title-->D["✍️ Latest commit"]
 
     subgraph develop
     D
     end
-    subgraph release
-    D-.At the end of the release day.->DRegular["🆕 Create TimeStamped <br> TAG OR BNAME"]
+
+    subgraph release/*
+    D-.At the last day before release period.->ReleaseNode["🆕 Create TimeStamped <br> Branch name"]
+    ReleaseNode-.At the end of the release day.->D
     end
+
     subgraph hot-fix?
-    H-->D;
+    ReleaseNode-.create new branch.->H;
+    H["🚑 Fix"]-.merge back and release.->ReleaseNode;
     end
 
     subgraph Jenkins
       subgraph Release Tasks
       D-->|"automatically"|R1["🌘 QA"]
-      D-->|"manually"|R2["🌗 Staging"];
-      D-->|"manually"|R3["🌕 Live"];
+      ReleaseNode-->|"manually"|R2["🌗 Staging"];
+      ReleaseNode-->|"manually"|R3["🌕 Live"];
       end
       subgraph Pipelines
       R1-->J1
@@ -41,9 +44,8 @@ graph TD;
       J1["🔗 Checkout"]-->J2["🚚 Install"]
       J2-->J3["🐛 Test"]
       J3-->J4["📃 Build"]
-      J4-->J5["🍺 Publish to release branch"]
-      J5-->J6["☁️ Deploy to AWS S3 bucket"]
-      J6-->J7["🗑 Delete Jenkins workspace"]
+      J4-->J5["☁️ Deploy to AWS S3 bucket"]
+      J5-->J6["🗑 Delete Jenkins workspace"]
       end
     end
 ```
