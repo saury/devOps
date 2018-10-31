@@ -1,0 +1,121 @@
+pipeline {
+    agent any
+    environment {
+        GIT_CREDENTIAL = "c11db058-d3ee-4ac3-bfb2-d8db6dee3ed1" 
+        GIT_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/student-portal-fe.git"
+        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
+        MAIL_TO = "jin.xu@ef.com"
+        // MAIL_TO = "ext.andy.zhang@ef.com,ext.lucy.lu@ef.com,ext.july.long@ef.com,michael.hu@ef.com,jin.xu@ef.com"
+        FAILED_MAIL_TO = "jin.xu@ef.com"
+        MAIL_TITLE = "Student portal $DEPLOY_ENV"
+        MESSAGE_SUCCESS = "Student portal $DEPLOY_ENV deployed successfully! 😚 \n Log:"
+        MESSAGE_FAIL = "Student portal $DEPLOY_ENV deployed failed! ⛈ \n Log:"
+    }
+    stages {
+        stage('PREPARATION') {
+            parallel {
+                stage('Checkout dev') {
+                    when {
+                        environment name: 'DEPLOY_BRANCH', value: 'develop'
+                    }
+                    steps{
+                        dir('student-portal') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'develop']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+                        }
+                    }
+                }
+                stage('Checkout release') {
+                    when {
+                        environment name: 'DEPLOY_BRANCH', value: 'release'
+                    }
+                    steps{
+                        dir('student-portal') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'release/*']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+                        }
+                    }
+                }
+                stage('Install dependencies') {
+                    steps{
+                        dir('student-portal') {
+                            sh '''
+                                npm install gulp
+                                yarn
+                                # yarn lint
+                                # yarn test
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('PUBLISH') {
+            parallel {
+                stage('QA') {
+                    when {
+                        environment name: 'DEPLOY_ENV', value: 'qa'
+                    }
+                    steps{
+                        dir('student-portal') {
+                            sh '''
+                                gulp release_qa
+                                cd ./release
+                                ls -al
+                                aws s3 sync . s3://kon-qa.ef.cn/ --profile cn_qa --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon-qa.ef.cn/oc/ --profile cn_qa --region cn-north-1 --exclude '.git/**/*'
+                            '''
+                        }
+                    }
+                }
+                stage('Staging') {
+                    when {
+                        environment name: 'DEPLOY_ENV', value: 'staging'
+                    }
+                    steps{
+                        dir('student-portal') {
+                            sh '''
+                                gulp release_staging_cn
+                                cd ./release
+                                # aws s3 sync . s3://kon-staging.ef.cn/oc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                                # aws s3 sync . s3://kon-staging.ef.cn --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                            '''
+                        }
+                    }
+                }
+                stage('Live') {
+                    when {
+                        environment name: 'DEPLOY_ENV', value: 'live'
+                    }
+                    steps{
+                        dir('student-portal') {
+                            sh '''
+                                gulp release_staging_cn
+                                cd ./release
+                                # aws s3 sync . s3://kon.ef.cn --profile cn_live --region cn-north-1 --exclude '.git/**/*'
+                                # aws s3 sync . s3://kon.ef.cn/oc/ --profile cn_live --region cn-north-1 --exclude '.git/**/*'
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Clean up'
+            deleteDir()
+        }
+        success {
+            echo 'Succeeed!'
+            emailext attachLog: true, body: MESSAGE_SUCCESS, subject: MAIL_TITLE, to: MAIL_TO
+        }
+        unstable {
+            echo 'Unstable :/'
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: FAILED_MAIL_TO
+        }
+        failure {
+            echo 'Failed :('
+            emailext attachLog: true, body: MESSAGE_FAIL, subject: MAIL_TITLE, to: FAILED_MAIL_TO
+        }
+    }
+}
