@@ -34,17 +34,18 @@ pipeline {
                         }
                     }
                 }
-                stage('Install dependencies') {
-                    steps{
-                        dir('student-portal') {
-                            sh '''
-                                npm install gulp
-                                yarn
-                                # yarn lint
-                                # yarn test
-                            '''
-                        }
-                    }
+            }
+        }
+
+        stage('Install dependencies') {
+            steps{
+                dir('student-portal') {
+                    sh '''
+                        yarn
+                        bower install
+                        # yarn lint
+                        # yarn test
+                    '''
                 }
             }
         }
