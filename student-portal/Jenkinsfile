@@ -3,9 +3,10 @@ pipeline {
     environment {
         GIT_CREDENTIAL = "c11db058-d3ee-4ac3-bfb2-d8db6dee3ed1" 
         GIT_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/student-portal-fe.git"
+        GIT_ADMIN_PORTAL_URL = "ssh://git@bitbucket.englishtown.cn:7999/etg/student-portal-fe-deployment.git"
         PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
-        MAIL_TO = "jin.xu@ef.com"
-        // MAIL_TO = "ext.andy.zhang@ef.com,ext.lucy.lu@ef.com,ext.july.long@ef.com,michael.hu@ef.com,jin.xu@ef.com"
+        // MAIL_TO = "jin.xu@ef.com"
+        MAIL_TO = "ext.andy.zhang@ef.com,ext.lucy.lu@ef.com,ext.july.long@ef.com,michael.hu@ef.com,jin.xu@ef.com"
         FAILED_MAIL_TO = "jin.xu@ef.com"
         MAIL_TITLE = "Student portal $DEPLOY_ENV"
         MESSAGE_SUCCESS = "Student portal $DEPLOY_ENV deployed successfully! 😚 \n Log:"
@@ -31,6 +32,13 @@ pipeline {
                     steps{
                         dir('student-portal') {
                             checkout([$class: 'GitSCM', branches: [[name: 'release/*']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+                        }
+                    }
+                }
+                stage('Checkout admin portal') {
+                    steps{
+                        dir('admin-portal') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'admin_portal']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_ADMIN_PORTAL_URL]]])
                         }
                     }
                 }
@@ -64,6 +72,13 @@ pipeline {
                                 ls -al
                                 aws s3 sync . s3://kon-qa.ef.cn/ --profile cn_qa --region cn-north-1 --exclude '.git/**/*'
                                 aws s3 sync . s3://kon-qa.ef.cn/oc/ --profile cn_qa --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon-qa.ef.cn/evc/ --profile cn_qa --region cn-north-1 --exclude '.git/**/*'
+                            '''
+                        }
+                        dir('student-portal') {
+                            sh '''
+                                gulp release_admin_portal
+                                rm -rf ./release/scripts/js/app.prd_cn.js ./release/scripts/js/app.stg_cn.js
                             '''
                         }
                     }
@@ -77,8 +92,15 @@ pipeline {
                             sh '''
                                 gulp release_staging_cn
                                 cd ./release
-                                # aws s3 sync . s3://kon-staging.ef.cn/oc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
-                                # aws s3 sync . s3://kon-staging.ef.cn --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon-staging.ef.cn/evc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon-staging.ef.cn/oc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon-staging.ef.cn --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                            '''
+                        }
+                        dir('student-portal') {
+                            sh '''
+                                gulp release_admin_portal
+                                rm -rf ./release/scripts/js/app.prd_qa.js
                             '''
                         }
                     }
@@ -92,10 +114,34 @@ pipeline {
                             sh '''
                                 gulp release_staging_cn
                                 cd ./release
-                                # aws s3 sync . s3://kon.ef.cn --profile cn_live --region cn-north-1 --exclude '.git/**/*'
-                                # aws s3 sync . s3://kon.ef.cn/oc/ --profile cn_live --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon.ef.cn --profile cn_live --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon.ef.cn/oc/ --profile cn_live --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon.ef.cn/evc/ --profile cn_live --region cn-north-1 --exclude '.git/**/*'
                             '''
                         }
+                        dir('student-portal') {
+                            sh '''
+                                gulp release_admin_portal
+                                rm -rf ./release/scripts/js/app.prd_qa.js
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('PUSH TO ADMIN PORTAL') {
+            stage('Commit') {
+                steps {
+                    dir('admin-portal') {
+                        sh '''
+                            cp -rf ../student-portal/release/ .
+                            git add .
+                            git config user.email \'jin.xu@ef.com\'
+                            git config user.name \'Jenkins\'
+                            git commit -m \'auto release\'
+                            git push origin HEAD:admin_portal -f
+                        '''
                     }
                 }
             }
