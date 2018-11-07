@@ -131,18 +131,16 @@ pipeline {
         }
 
         stage('PUSH TO ADMIN PORTAL') {
-            stage('Commit') {
-                steps {
-                    dir('admin-portal') {
-                        sh '''
-                            cp -rf ../student-portal/release/ .
-                            git add .
-                            git config user.email \'jin.xu@ef.com\'
-                            git config user.name \'Jenkins\'
-                            git commit -m \'auto release\'
-                            git push origin HEAD:admin_portal -f
-                        '''
-                    }
+            steps {
+                dir('admin-portal') {
+                    sh '''
+                        cp -rf ../student-portal/release/ .
+                        git add .
+                        git config user.email \'jin.xu@ef.com\'
+                        git config user.name \'Jenkins\'
+                        git commit -m \'auto release\'
+                        git push origin HEAD:admin_portal -f
+                    '''
                 }
             }
         }
