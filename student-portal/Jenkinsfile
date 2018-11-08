@@ -31,7 +31,7 @@ pipeline {
                     }
                     steps{
                         dir('student-portal') {
-                            checkout([$class: 'GitSCM', branches: [[name: 'release/*']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+                            checkout([$class: 'GitSCM', branches: [[name: ':origin/release/.*']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
                         }
                     }
                 }
@@ -92,9 +92,9 @@ pipeline {
                             sh '''
                                 gulp release_staging_cn
                                 cd ./release
-                                aws s3 sync . s3://kon-staging.ef.cn/evc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
-                                aws s3 sync . s3://kon-staging.ef.cn/oc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
                                 aws s3 sync . s3://kon-staging.ef.cn --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon-staging.ef.cn/oc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
+                                aws s3 sync . s3://kon-staging.ef.cn/evc/ --profile cn_staging --region cn-north-1 --exclude '.git/**/*'
                             '''
                         }
                         dir('student-portal') {
@@ -131,6 +131,11 @@ pipeline {
         }
 
         stage('PUSH TO ADMIN PORTAL') {
+            when {
+                not{
+                    environment name: 'DEPLOY_ENV', value: 'live'
+                }
+            }
             steps {
                 dir('admin-portal') {
                     sh '''
