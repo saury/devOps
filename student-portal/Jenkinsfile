@@ -36,6 +36,11 @@ pipeline {
                     }
                 }
                 stage('Checkout admin portal') {
+                    when {
+                        not{
+                            environment name: 'DEPLOY_ENV', value: 'live'
+                        }
+                    }
                     steps{
                         dir('admin-portal') {
                             checkout([$class: 'GitSCM', branches: [[name: 'admin_portal']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_ADMIN_PORTAL_URL]]])
@@ -112,17 +117,11 @@ pipeline {
                     steps{
                         dir('student-portal') {
                             sh '''
-                                gulp release_staging_cn
+                                gulp release_live_cn
                                 cd ./release
                                 aws s3 sync . s3://kon.ef.cn --profile cn_live --region cn-north-1 --exclude '.git/**/*'
                                 aws s3 sync . s3://kon.ef.cn/oc/ --profile cn_live --region cn-north-1 --exclude '.git/**/*'
                                 aws s3 sync . s3://kon.ef.cn/evc/ --profile cn_live --region cn-north-1 --exclude '.git/**/*'
-                            '''
-                        }
-                        dir('student-portal') {
-                            sh '''
-                                gulp release_admin_portal
-                                rm -rf ./release/scripts/js/app.prd_qa.js
                             '''
                         }
                     }
