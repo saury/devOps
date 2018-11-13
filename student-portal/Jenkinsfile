@@ -35,6 +35,16 @@ pipeline {
                         }
                     }
                 }
+                stage('Checkout hotfix') {
+                    when {
+                        environment name: 'DEPLOY_BRANCH', value: 'hotfix'
+                    }
+                    steps{
+                        dir('student-portal') {
+                            checkout([$class: 'GitSCM', branches: [[name: ':origin/hotfix/.*']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_URL]]])
+                        }
+                    }
+                }
                 stage('Checkout admin portal') {
                     when {
                         not{
