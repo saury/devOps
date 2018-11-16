@@ -47,13 +47,21 @@ pipeline {
                 }
                 stage('Checkout admin portal') {
                     when {
-                        not{
-                            environment name: 'DEPLOY_ENV', value: 'live'
-                        }
+                        environment name: 'DEPLOY_ENV', value: 'qa'
                     }
                     steps{
                         dir('admin-portal') {
                             checkout([$class: 'GitSCM', branches: [[name: 'admin_portal']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_ADMIN_PORTAL_URL]]])
+                        }
+                    }
+                }
+                stage('Checkout admin portal release') {
+                    when {
+                        environment name: 'DEPLOY_ENV', value: 'staging'
+                    }
+                    steps{
+                        dir('admin-portal') {
+                            checkout([$class: 'GitSCM', branches: [[name: 'admin_portal_release']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: GIT_CREDENTIAL, url: GIT_ADMIN_PORTAL_URL]]])
                         }
                     }
                 }
@@ -139,11 +147,9 @@ pipeline {
             }
         }
 
-        stage('PUSH TO ADMIN PORTAL') {
+        stage('PUSH TO ADMIN PORTAL QA') {
             when {
-                not{
-                    environment name: 'DEPLOY_ENV', value: 'live'
-                }
+                environment name: 'DEPLOY_ENV', value: 'qa'
             }
             steps {
                 dir('admin-portal') {
@@ -152,8 +158,25 @@ pipeline {
                         git add .
                         git config user.email \'jin.xu@ef.com\'
                         git config user.name \'Jenkins\'
-                        git commit -m \'auto release\'
+                        git commit -m \'auto release for qa\'
                         git push origin HEAD:admin_portal -f
+                    '''
+                }
+            }
+        }
+        stage('PUSH TO ADMIN PORTAL RELEASE') {
+            when {
+                environment name: 'DEPLOY_ENV', value: 'staging'
+            }
+            steps {
+                dir('admin-portal') {
+                    sh '''
+                        cp -rf ../student-portal/release/ .
+                        git add .
+                        git config user.email \'jin.xu@ef.com\'
+                        git config user.name \'Jenkins\'
+                        git commit -m \'auto release for production\'
+                        git push origin HEAD:admin_portal_release -f
                     '''
                 }
             }
