@@ -14,30 +14,34 @@ So, all the pipline script should refer to these steps.
 
 ```mermaid
 graph TD;
-    Title(("📓 Repositories"))
-		Title-->D["✍️ Latest commit"]
+  Title(("📓 Repositories"))
+  Title-->D
 
+  subgraph branches
     subgraph develop
-    D
+      D["✍️ Latest commit"]
     end
 
     subgraph release/*
-    D-.At the last day before release period.->ReleaseNode["🆕 Create TimeStamped <br> Branch name"]
-    ReleaseNode-.At the end of the release day.->D
+      D-.At the last day before release period.->ReleaseNode["🆕 Create TimeStamped <br> Branch name"]
+      ReleaseNode-.At the end of the release day.->D
     end
 
-    subgraph hot-fix?
-    ReleaseNode-.create new branch.->H;
-    H["🚑 Fix"]-.merge back and release.->ReleaseNode;
+    subgraph hot-fix/*
+      ReleaseNode-.create new branch.->H;
+      H["🚑 Fix"]-.merge to release if QA pass.->ReleaseNode;
     end
+  end
 
-    subgraph Jenkins
-      subgraph Release Tasks
+  subgraph Jenkins
+    subgraph Release Tasks
+      H-.Manually.->R1;
       D-->|"automatically"|R1["🌘 QA"]
       ReleaseNode-->|"manually"|R2["🌗 Staging"];
       ReleaseNode-->|"manually"|R3["🌕 Live"];
-      end
-      subgraph Pipelines
+    end
+
+    subgraph Pipelines
       R1-->J1
       R2-->J1
       R3-->J1
@@ -46,6 +50,6 @@ graph TD;
       J3-->J4["📃 Build"]
       J4-->J5["☁️ Deploy to AWS S3 bucket"]
       J5-->J6["🗑 Delete Jenkins workspace"]
-      end
     end
+  end
 ```
